@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Stage site
-        run: mkdir -p _site/v2 && cp index.html _site/ && cp v2/index.html _site/v2/
+        run: mkdir -p _site/v2 _site/v3 && cp index.html _site/ && cp v2/index.html _site/v2/ && cp v3/index.html _site/v3/
       - uses: actions/configure-pages@v5
         with:
           enablement: true

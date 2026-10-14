@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="strict-origin">
+<title>IT PMO Board v3</title>
+<style>
+/* ===== Design tokens (light default, dark via prefers-color-scheme or toggle) ===== */
+:root {
+  --bg: #eef2f8;
+  --surface: #ffffff;
+  --surface-2: #f6f8fc;
+  --col: #e3eaf5;
+  --ink: #14202e;
+  --ink-soft: #4a5a70;
+  --line: #cfd8e6;
+  --brand: #134074;
+  --brand-ink: #ffffff;
+  --accent: #1d5aa6;
+  --focus: #b86e00;
+  --crit: #b3261e;
+  --high: #a65f00;
+  --med: #1a5fb4;
+  --low: #5b6676;
+  --ok: #2e7d32;
+  --st-backlog: #6b7a90;
+  --st-progress: #1d5aa6;
+  --st-blocked: #b3261e;
+  --st-done: #2e7d32;
+  --c1: #1d5aa6; --c2: #0f7b6c; --c3: #7a3fb0; --c4: #b35a00; --c5: #a31d6b; --c6: #4d6b00;
+  --shadow: 0 1px 2px rgba(10, 30, 60, .14);
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
+  --radius: 8px;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c1522; --surface: #142133; --surface-2: #192a40; --col: #101c2d;
+    --ink: #e8eef7; --ink-soft: #a9b8cd; --line: #2a3b54;
+    --brand: #0a1a30; --brand-ink: #ffffff; --accent: #6aa8f5; --focus: #ffc247;
+    --crit: #ff8a80; --high: #ffb74d; --med: #7db4ff; --low: #aab4c3; --ok: #7ed08a;
+    --st-backlog: #94a3b8; --st-progress: #6aa8f5; --st-blocked: #ff8a80; --st-done: #7ed08a;
+    --c1: #6aa8f5; --c2: #4fd1b8; --c3: #c39bf0; --c4: #ffb36b; --c5: #ff8fc8; --c6: #b5d96a;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c1522; --surface: #142133; --surface-2: #192a40; --col: #101c2d;
+  --ink: #e8eef7; --ink-soft: #a9b8cd; --line: #2a3b54;
+  --brand: #0a1a30; --brand-ink: #ffffff; --accent: #6aa8f5; --focus: #ffc247;
+  --crit: #ff8a80; --high: #ffb74d; --med: #7db4ff; --low: #aab4c3; --ok: #7ed08a;
+  --st-backlog: #94a3b8; --st-progress: #6aa8f5; --st-blocked: #ff8a80; --st-done: #7ed08a;
+  --c1: #6aa8f5; --c2: #4fd1b8; --c3: #c39bf0; --c4: #ffb36b; --c5: #ff8fc8; --c6: #b5d96a;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .5);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font); background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1.5; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+button, select, input, textarea { font: inherit; color: inherit; }
+h1, h2, h3 { text-wrap: balance; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* ===== Header ===== */
+.app-header { background: var(--brand); color: var(--brand-ink); padding: var(--sp-3) var(--sp-5); display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; justify-content: space-between; }
+.wordmark { font-size: 1.25rem; font-weight: 700; letter-spacing: .1em; }
+.wordmark small { display: block; font-size: .75rem; font-weight: 400; letter-spacing: 0; opacity: .85; }
+.header-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.btn { min-height: 44px; border: 1px solid transparent; border-radius: var(--radius); padding: var(--sp-2) var(--sp-4); cursor: pointer; background: var(--accent); color: #fff; font-weight: 600; transition: background-color .15s, border-color .15s; }
+:root[data-theme="dark"] .btn { color: #07111f; }
+.btn:hover { filter: brightness(1.1); }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
+.btn-ghost { background: transparent; color: inherit; border-color: currentColor; }
+.app-header .btn-ghost { color: var(--brand-ink); }
+.btn-quiet { background: var(--surface); color: var(--ink); border-color: var(--line); }
+
+/* ===== Layout ===== */
+main { padding: var(--sp-5); display: grid; gap: var(--sp-5); max-width: 1500px; margin: 0 auto; }
+.section-title { margin: 0 0 var(--sp-3); font-size: 1.05rem; }
+.hint { color: var(--ink-soft); font-size: .8rem; margin: 0; }
+
+/* ===== Filters ===== */
+.filters { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: end; background: var(--surface); padding: var(--sp-3) var(--sp-4); border-radius: var(--radius); box-shadow: var(--shadow); }
+.filters label { display: flex; flex-direction: column; font-size: .8rem; color: var(--ink-soft); gap: var(--sp-1); }
+.filters input, .filters select { min-height: 44px; padding: 0 var(--sp-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); min-width: 190px; }
+.filters .hint { margin-left: auto; }
+
+/* ===== Statistics ===== */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--sp-3); }
+.kpi { background: var(--surface); border-radius: var(--radius); padding: var(--sp-3) var(--sp-4); box-shadow: var(--shadow); }
+.kpi .label { font-size: .78rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .06em; }
+.kpi .value { font-size: 1.9rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.kpi .sub { font-size: .8rem; color: var(--ink-soft); }
+.kpi.alert .value { color: var(--crit); }
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--sp-4); }
+.panel { background: var(--surface); border-radius: var(--radius); padding: var(--sp-4); box-shadow: var(--shadow); min-width: 0; }
+.panel h3 { margin: 0 0 var(--sp-3); font-size: .95rem; }
+.donut-wrap { display: flex; gap: var(--sp-4); align-items: center; flex-wrap: wrap; }
+.donut { width: 140px; height: 140px; flex: none; }
+.donut text { fill: var(--ink); font-weight: 700; }
+.legend { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-1); font-size: .88rem; min-width: 0; }
+.legend li { display: flex; align-items: center; gap: var(--sp-2); }
+.swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.legend b { margin-left: auto; padding-left: var(--sp-3); font-variant-numeric: tabular-nums; }
+.bars { display: grid; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
+.bar-row { display: grid; grid-template-columns: minmax(80px, 38%) 1fr auto; gap: var(--sp-2); align-items: center; font-size: .85rem; }
+.bar-row .name { overflow-wrap: anywhere; }
+.track { height: 14px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.fill { height: 100%; border-radius: 999px; transition: width .35s ease; }
+.bar-row .num { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 2ch; text-align: right; }
+.upcoming { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); font-size: .88rem; }
+.upcoming li { display: flex; justify-content: space-between; gap: var(--sp-3); border-bottom: 1px solid var(--line); padding-bottom: var(--sp-2); }
+.upcoming .when { color: var(--ink-soft); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.upcoming .late { color: var(--crit); font-weight: 600; }
+.empty { color: var(--ink-soft); font-size: .88rem; }
+
+/* ===== Board ===== */
+.board { display: flex; gap: var(--sp-4); align-items: flex-start; }
+.column { flex: 1 1 0; min-width: 0; background: var(--col); border: 2px dashed transparent; border-radius: var(--radius); padding: var(--sp-2); min-height: 180px; transition: border-color .15s, background-color .15s; }
+.column.drop-target { border-color: var(--accent); background: var(--surface-2); }
+.column-head { display: flex; justify-content: space-between; align-items: center; padding: var(--sp-2); gap: var(--sp-2); }
+.column-head h2 { margin: 0; font-size: .95rem; display: flex; align-items: center; gap: var(--sp-2); }
+.badge { background: var(--ink); color: var(--bg); border-radius: 999px; padding: 0 var(--sp-2); font-size: .78rem; font-weight: 700; min-width: 26px; text-align: center; }
+.card { background: var(--surface); border-radius: var(--radius); border-left: 6px solid var(--low); padding: var(--sp-3); margin-bottom: var(--sp-2); box-shadow: var(--shadow); cursor: grab; }
+.card.p-critical { border-left-color: var(--crit); }
+.card.p-high { border-left-color: var(--high); }
+.card.p-medium { border-left-color: var(--med); }
+.card.p-low { border-left-color: var(--low); }
+.card.dragging { opacity: .45; }
+.card-top { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); }
+.task-id { font-size: .72rem; font-weight: 700; color: var(--ink-soft); font-family: var(--mono); }
+.card h3 { margin: var(--sp-1) 0; font-size: .95rem; overflow-wrap: anywhere; }
+.meta { font-size: .8rem; color: var(--ink-soft); margin: 2px 0; overflow-wrap: anywhere; }
+.pills { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin: var(--sp-2) 0; }
+.pill { font-size: .72rem; font-weight: 700; padding: 1px var(--sp-2); border-radius: 999px; border: 1px solid currentColor; }
+.pill.critical { color: var(--crit); } .pill.high { color: var(--high); } .pill.medium { color: var(--med); } .pill.low { color: var(--low); }
+.tag { font-size: .72rem; background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 1px var(--sp-2); }
+.overdue-badge { font-size: .72rem; font-weight: 700; color: var(--crit); border: 1px solid var(--crit); border-radius: 4px; padding: 1px var(--sp-2); }
+.card-actions { display: flex; gap: var(--sp-2); align-items: center; margin-top: var(--sp-2); min-height: 44px; }
+.card-actions select { min-height: 44px; padding: 0 var(--sp-2); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); }
+.icon-btn { min-width: 44px; min-height: 44px; background: none; border: 1px solid transparent; border-radius: var(--radius); cursor: pointer; font-size: 1.3rem; line-height: 1; color: var(--ink-soft); }
+.icon-btn:hover { border-color: var(--crit); color: var(--crit); }
+.confirm { display: flex; gap: var(--sp-2); align-items: center; font-size: .85rem; font-weight: 600; }
+.confirm button { min-height: 44px; padding: 0 var(--sp-4); border-radius: var(--radius); border: 1px solid var(--line); cursor: pointer; background: var(--surface-2); }
+.confirm .yes { background: var(--crit); border-color: var(--crit); color: #fff; }
+:root[data-theme="dark"] .confirm .yes { color: #1b0705; }
+
+/* ===== Modal & form ===== */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(5, 12, 25, .65); display: flex; align-items: flex-start; justify-content: center; padding: var(--sp-5); overflow-y: auto; z-index: 20; }
+.modal-backdrop[hidden] { display: none; }
+.modal { background: var(--surface); border-radius: var(--radius); width: 100%; max-width: 580px; padding: var(--sp-5); }
+.modal h2 { margin-top: 0; }
+.field { margin-bottom: var(--sp-3); }
+.field label { display: block; font-weight: 600; margin-bottom: var(--sp-1); }
+.field input, .field select, .field textarea { width: 100%; min-height: 44px; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); }
+.field.invalid input, .field.invalid select, .field.invalid textarea { border-color: var(--crit); }
+.error { color: var(--crit); font-size: .82rem; margin: var(--sp-1) 0 0; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+.form-actions { display: flex; gap: var(--sp-2); justify-content: flex-end; margin-top: var(--sp-4); }
+
+/* ===== Toasts ===== */
+.toasts { position: fixed; right: var(--sp-4); bottom: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); z-index: 30; }
+.toast { background: var(--brand); color: var(--brand-ink); padding: var(--sp-3) var(--sp-4); border-radius: var(--radius); box-shadow: 0 2px 8px rgba(0,0,0,.35); max-width: 340px; border-left: 6px solid var(--accent); }
+.toast.success { border-left-color: var(--ok); }
+.toast.warn { border-left-color: var(--high); }
+
+/* ===== Responsive ===== */
+@media (max-width: 767px) {
+  .board { flex-direction: column; }
+  .column { width: 100%; flex: none; }
+  .row { grid-template-columns: 1fr; }
+  .filters .hint { margin-left: 0; }
+  .filters input, .filters select { min-width: 0; width: 100%; }
+  .filters label { flex: 1 1 140px; }
+  main { padding: var(--sp-3); }
+  .app-header { padding-left: var(--sp-3); padding-right: var(--sp-3); }
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="wordmark">IT PMO<small>Internal demo / training tool — fictitious data</small></div>
+  <div class="header-actions">
+    <button type="button" class="btn btn-ghost" id="themeBtn" aria-label="Toggle light and dark theme">Theme</button>
+    <button type="button" class="btn" id="openAdd">+ Add Task</button>
+  </div>
+</header>
+
+<main>
+  <section class="filters" aria-label="Filters">
+    <label for="fProject">Project <select id="fProject"></select></label>
+    <label for="fAssignee">Assignee contains <input type="text" id="fAssignee" placeholder="e.g. Tan"></label>
+    <label for="fPriority">Priority <select id="fPriority"></select></label>
+    <button type="button" class="btn btn-quiet" id="clearFilters">Clear filters</button>
+    <p class="hint">Demo only: the board is not saved and resets on refresh. New tasks are emailed through FormSubmit, so enter fictitious data only.</p>
+  </section>
+
+  <section aria-labelledby="statsTitle">
+    <h2 class="section-title" id="statsTitle">Statistics <span class="hint" id="scope"></span></h2>
+    <div class="stats-grid" id="kpis"></div>
+    <div class="charts" id="charts" style="margin-top: var(--sp-4)"></div>
+  </section>
+
+  <section aria-label="Kanban board">
+    <div class="board" id="board"></div>
+  </section>
+</main>
+
+<div class="modal-backdrop" id="modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h2 id="modalTitle">Add Task</h2>
+    <form id="taskForm" novalidate>
+      <div class="field" data-field="title">
+        <label for="title">Task Title *</label>
+        <input type="text" id="title" name="title" maxlength="80" autocomplete="off">
+        <p class="error" id="err-title" role="alert"></p>
+      </div>
+      <div class="field" data-field="description">
+        <label for="description">Description</label>
+        <textarea id="description" name="description" rows="3" maxlength="500"></textarea>
+        <p class="error" id="err-description" role="alert"></p>
+      </div>
+      <div class="row">
+        <div class="field" data-field="project">
+          <label for="project">Project / Workstream *</label>
+          <select id="project" name="project"></select>
+          <p class="error" id="err-project" role="alert"></p>
+        </div>
+        <div class="field" data-field="category">
+          <label for="category">Category *</label>
+          <select id="category" name="category"></select>
+          <p class="error" id="err-category" role="alert"></p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field" data-field="assignee">
+          <label for="assignee">Assignee *</label>
+          <input type="text" id="assignee" name="assignee" autocomplete="off" maxlength="60">
+          <p class="error" id="err-assignee" role="alert"></p>
+        </div>
+        <div class="field" data-field="priority">
+          <label for="priority">Priority *</label>
+          <select id="priority" name="priority"></select>
+          <p class="error" id="err-priority" role="alert"></p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field" data-field="dueDate">
+          <label for="dueDate">Due Date *</label>
+          <input type="date" id="dueDate" name="dueDate">
+          <p class="error" id="err-dueDate" role="alert"></p>
+        </div>
+        <div class="field" data-field="status">
+          <label for="status">Status *</label>
+          <select id="status" name="status"></select>
+          <p class="error" id="err-status" role="alert"></p>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-quiet" id="cancelAdd">Cancel</button>
+        <button type="submit" class="btn" id="submitBtn">Add Task</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
+
+<script>
+/* ======================================================================
+   CONFIG
+   FormSubmit requires a ONE-TIME ACTIVATION: the first submission sends a
+   confirmation email to the address below. Submissions are only delivered
+   after the activation link in that email has been clicked.
+   Swap YOUR_EMAIL@example.com for the real notification address (one place).
+   ====================================================================== */
+const FORMSUBMIT_ENDPOINT = "https://formsubmit.co/ajax/YOUR_EMAIL@example.com";
+
+/* ===== Constants ===== */
+const STATUSES = ["Backlog", "In Progress", "Blocked", "Done"];
+const STATUS_COLOR = { "Backlog": "var(--st-backlog)", "In Progress": "var(--st-progress)", "Blocked": "var(--st-blocked)", "Done": "var(--st-done)" };
+const PRIORITIES = ["Critical", "High", "Medium", "Low"];
+const PRIORITY_COLOR = { Critical: "var(--crit)", High: "var(--high)", Medium: "var(--med)", Low: "var(--low)" };
+const PROJECTS = ["Core Banking Upgrade", "Digital Channels", "Cybersecurity Uplift", "Data & Analytics", "Infrastructure & Cloud", "Vendor Management"];
+const CATEGORIES = ["Application Development", "Infrastructure", "Cybersecurity", "Data", "Compliance", "Vendor"];
+const CATEGORY_COLOR = { "Application Development": "var(--c1)", "Infrastructure": "var(--c2)", "Cybersecurity": "var(--c3)", "Data": "var(--c4)", "Compliance": "var(--c5)", "Vendor": "var(--c6)" };
+const MAX_YEAR = 2100;
+
+/* ===== Helpers ===== */
+function escapeHtml(value) {
+  return String(value == null ? "" : value)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function pad2(n) { return String(n).padStart(2, "0"); }
+function isoDate(d) { return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
+function todayIso() { return isoDate(new Date()); }
+function offsetDate(days) { const d = new Date(); d.setDate(d.getDate() + days); return isoDate(d); }
+function daysUntil(iso) { return Math.round((new Date(iso + "T00:00:00") - new Date(todayIso() + "T00:00:00")) / 86400000); }
+function isOverdue(task) { return task.status !== "Done" && task.dueDate < todayIso(); }
+function pct(n, d) { return d ? Math.round((n / d) * 100) : 0; }
+function optionsHtml(list, placeholder) {
+  return (placeholder ? '<option value="">' + escapeHtml(placeholder) + "</option>" : "") +
+    list.map(v => '<option value="' + escapeHtml(v) + '">' + escapeHtml(v) + "</option>").join("");
+}
+
+/* ===== State (single source of truth; memory only, no storage APIs) ===== */
+let idCounter = 8;
+const state = {
+  tasks: [
+    { id: "UOB-ITPM-0001", title: "Migrate FX pricing service to AWS", description: "Lift and shift the FX pricing microservice to the approved cloud landing zone.", project: "Infrastructure & Cloud", category: "Infrastructure", assignee: "Priya Nair", priority: "High", dueDate: offsetDate(21), status: "In Progress" },
+    { id: "UOB-ITPM-0002", title: "Patch CVE-2025-XXXX on branch teller VDI", description: "Roll out vendor security patch to all branch teller virtual desktops.", project: "Cybersecurity Uplift", category: "Cybersecurity", assignee: "Marcus Lee", priority: "Critical", dueDate: offsetDate(-3), status: "In Progress" },
+    { id: "UOB-ITPM-0003", title: "UAT sign-off for mobile onboarding release 4.2", description: "Collect business sign-off after UAT cycle 2.", project: "Digital Channels", category: "Application Development", assignee: "Aisha Rahman", priority: "High", dueDate: offsetDate(5), status: "Blocked" },
+    { id: "UOB-ITPM-0004", title: "Design data lineage for regulatory reporting", description: "", project: "Data & Analytics", category: "Data", assignee: "Daniel Tan", priority: "Medium", dueDate: offsetDate(30), status: "Backlog" },
+    { id: "UOB-ITPM-0005", title: "Renew core banking vendor support contract", description: "Negotiate SLA terms and pricing for next 3 years.", project: "Vendor Management", category: "Vendor", assignee: "Grace Wong", priority: "Medium", dueDate: offsetDate(-10), status: "Blocked" },
+    { id: "UOB-ITPM-0006", title: "Complete DR failover test for payments gateway", description: "Annual disaster recovery exercise evidence pack.", project: "Core Banking Upgrade", category: "Compliance", assignee: "Marcus Lee", priority: "High", dueDate: offsetDate(-7), status: "Done" },
+    { id: "UOB-ITPM-0007", title: "Archive legacy reporting server logs", description: "", project: "Infrastructure & Cloud", category: "Infrastructure", assignee: "Priya Nair", priority: "Low", dueDate: offsetDate(45), status: "Backlog" },
+    { id: "UOB-ITPM-0008", title: "Publish API gateway throttling standard", description: "Finalise and circulate engineering standard v1.0.", project: "Digital Channels", category: "Application Development", assignee: "Aisha Rahman", priority: "Low", dueDate: offsetDate(12), status: "Done" }
+  ],
+  filters: { project: "", assignee: "", priority: "" }
+};
+const ui = { confirmDeleteId: null, draggingId: null };
+
+/* ===== Filtering ===== */
+function applyFilters() {
+  const f = state.filters;
+  const needle = f.assignee.trim().toLowerCase();
+  return state.tasks.filter(t =>
+    (!f.project || t.project === f.project) &&
+    (!f.priority || t.priority === f.priority) &&
+    (!needle || t.assignee.toLowerCase().includes(needle)));
+}
+
+/* ===== Statistics (computed from the filtered set) ===== */
+function computeStats(tasks) {
+  const count = (list, key) => list.map(k => [k, tasks.filter(t => t[key] === k).length]);
+  const total = tasks.length;
+  const done = tasks.filter(t => t.status === "Done").length;
+  const open = total - done;
+  const assignees = new Map();
+  tasks.forEach(t => { if (t.status !== "Done") assignees.set(t.assignee, (assignees.get(t.assignee) || 0) + 1); });
+  return {
+    total, done, open,
+    overdue: tasks.filter(isOverdue).length,
+    blocked: tasks.filter(t => t.status === "Blocked").length,
+    critical: tasks.filter(t => t.priority === "Critical" && t.status !== "Done").length,
+    byStatus: count(STATUSES, "status"),
+    byPriority: count(PRIORITIES, "priority"),
+    byProject: count(PROJECTS, "project").filter(p => p[1] > 0).sort((a, b) => b[1] - a[1]),
+    byCategory: count(CATEGORIES, "category"),
+    byAssignee: [...assignees.entries()].sort((a, b) => b[1] - a[1]),
+    upcoming: tasks.filter(t => t.status !== "Done").sort((a, b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 5)
+  };
+}
+
+function kpi(label, value, sub, alert) {
+  return '<div class="kpi' + (alert ? " alert" : "") + '"><div class="label">' + escapeHtml(label) + '</div><div class="value">' +
+    escapeHtml(value) + '</div><div class="sub">' + escapeHtml(sub) + "</div></div>";
+}
+
+function donut(entries, total, colorMap, what) {
+  const r = 52, c = 2 * Math.PI * r;
+  let offset = 0;
+  const arcs = entries.map(([name, n]) => {
+    const len = total ? (n / total) * c : 0;
+    const seg = '<circle cx="70" cy="70" r="' + r + '" fill="none" stroke="' + colorMap[name] + '" stroke-width="18" ' +
+      'stroke-dasharray="' + len.toFixed(2) + " " + (c - len).toFixed(2) + '" stroke-dashoffset="' + (-offset).toFixed(2) + '" transform="rotate(-90 70 70)">' +
+      "<title>" + escapeHtml(name) + ": " + n + " (" + pct(n, total) + "%)</title></circle>";
+    offset += len;
+    return seg;
+  }).join("");
+  const label = entries.map(([n, v]) => n + " " + v).join(", ");
+  return '<svg class="donut" viewBox="0 0 140 140" role="img" aria-label="Tasks by ' + escapeHtml(what) + ": " + escapeHtml(label) + '">' +
+    '<circle cx="70" cy="70" r="' + r + '" fill="none" stroke="var(--line)" stroke-width="18"/>' + arcs +
+    '<text x="70" y="68" text-anchor="middle" font-size="26">' + total + '</text>' +
+    '<text x="70" y="88" text-anchor="middle" font-size="11" style="font-weight:400">tasks</text></svg>';
+}
+
+function donutPanel(title, entries, total, colorMap, what) {
+  return '<div class="panel"><h3>' + escapeHtml(title) + '</h3><div class="donut-wrap">' + donut(entries, total, colorMap, what) +
+    '<ul class="legend">' + entries.map(([n, v]) => '<li><span class="swatch" style="background:' + colorMap[n] + '"></span>' +
+    escapeHtml(n) + "<b>" + v + " (" + pct(v, total) + "%)</b></li>").join("") + "</ul></div></div>";
+}
+
+function barList(entries, colorFor, max) {
+  if (!entries.length) return '<p class="empty">No data for the current filters.</p>';
+  return '<ul class="bars">' + entries.map(([name, n]) =>
+    '<li class="bar-row"><span class="name">' + escapeHtml(name) + '</span>' +
+    '<span class="track" aria-hidden="true"><span class="fill" style="display:block;width:' + pct(n, max) + '%;background:' + colorFor(name) + '"></span></span>' +
+    '<span class="num">' + Number(n) + "</span></li>").join("") + "</ul>";
+}
+
+function renderStats(all, visible) {
+  const s = computeStats(visible);
+  document.getElementById("scope").textContent = "— showing " + visible.length + " of " + all.length + " tasks";
+  document.getElementById("kpis").innerHTML =
+    kpi("Total tasks", s.total, s.open + " still open") +
+    kpi("Completion", pct(s.done, s.total) + "%", s.done + " of " + s.total + " done") +
+    kpi("Overdue", s.overdue, "open past due date", s.overdue > 0) +
+    kpi("Blocked", s.blocked, pct(s.blocked, s.total) + "% of tasks", s.blocked > 0) +
+    kpi("Critical open", s.critical, "needs attention", s.critical > 0);
+
+  const maxProject = Math.max(1, ...s.byProject.map(p => p[1]));
+  const maxAssignee = Math.max(1, ...s.byAssignee.map(p => p[1]));
+  const upcoming = s.upcoming.length ? '<ul class="upcoming">' + s.upcoming.map(t => {
+    const d = daysUntil(t.dueDate);
+    const when = d < 0 ? Math.abs(d) + "d overdue" : d === 0 ? "due today" : "in " + d + "d";
+    return '<li><span>' + escapeHtml(t.title) + '</span><span class="when' + (d < 0 ? " late" : "") + '">' + escapeHtml(when) + "</span></li>";
+  }).join("") + "</ul>" : '<p class="empty">Nothing open.</p>';
+
+  document.getElementById("charts").innerHTML =
+    donutPanel("Status distribution", s.byStatus, s.total, STATUS_COLOR, "status") +
+    donutPanel("Priority mix", s.byPriority, s.total, PRIORITY_COLOR, "priority") +
+    donutPanel("Category split", s.byCategory, s.total, CATEGORY_COLOR, "category") +
+    '<div class="panel"><h3>By project</h3>' + barList(s.byProject, () => "var(--accent)", maxProject) + "</div>" +
+    '<div class="panel"><h3>Open workload by assignee</h3>' + barList(s.byAssignee, () => "var(--accent)", maxAssignee) + "</div>" +
+    '<div class="panel"><h3>Next due</h3>' + upcoming + "</div>";
+}
+
+/* ===== Board rendering ===== */
+function renderCard(task) {
+  const pClass = "p-" + task.priority.toLowerCase();
+  const actions = ui.confirmDeleteId === task.id
+    ? '<div class="confirm" role="group" aria-label="Confirm delete">Delete? ' +
+      '<button type="button" class="yes" data-action="delete-yes" data-id="' + escapeHtml(task.id) + '">Yes</button>' +
+      '<button type="button" data-action="delete-no" data-id="' + escapeHtml(task.id) + '">No</button></div>'
+    : '<select data-action="move" data-id="' + escapeHtml(task.id) + '" aria-label="Move ' + escapeHtml(task.id) + ' to another column">' +
+      '<option value="">Move ▸</option>' +
+      STATUSES.filter(s => s !== task.status).map(s => '<option value="' + escapeHtml(s) + '">' + escapeHtml(s) + "</option>").join("") +
+      "</select>";
+  return '<article class="card ' + pClass + '" draggable="true" data-id="' + escapeHtml(task.id) + '">' +
+    '<div class="card-top"><span class="task-id">' + escapeHtml(task.id) + "</span>" +
+    '<button type="button" class="icon-btn" data-action="delete" data-id="' + escapeHtml(task.id) + '" aria-label="Delete task ' + escapeHtml(task.id) + '">&times;</button></div>' +
+    "<h3>" + escapeHtml(task.title) + "</h3>" +
+    '<div class="meta">' + escapeHtml(task.project) + "</div>" +
+    '<div class="meta">Assignee: ' + escapeHtml(task.assignee) + "</div>" +
+    '<div class="meta">Due: ' + escapeHtml(task.dueDate) + "</div>" +
+    '<div class="pills"><span class="pill ' + pClass.slice(2) + '">' + escapeHtml(task.priority) + "</span>" +
+    '<span class="tag">' + escapeHtml(task.category) + "</span>" +
+    (isOverdue(task) ? '<span class="overdue-badge">Overdue</span>' : "") + "</div>" +
+    '<div class="card-actions">' + actions + "</div></article>";
+}
+
+function renderBoard() {
+  const visible = applyFilters();
+  document.getElementById("board").innerHTML = STATUSES.map(status => {
+    const cards = visible.filter(t => t.status === status);
+    return '<section class="column" data-status="' + escapeHtml(status) + '" aria-label="' + escapeHtml(status) + ' column">' +
+      '<div class="column-head"><h2><span class="swatch" style="background:' + STATUS_COLOR[status] + '"></span>' + escapeHtml(status) +
+      '</h2><span class="badge" aria-label="' + cards.length + ' tasks">' + cards.length + "</span></div>" +
+      (cards.length ? cards.map(renderCard).join("") : '<p class="empty" style="text-align:center">No tasks</p>') + "</section>";
+  }).join("");
+  renderStats(state.tasks, visible);
+}
+
+/* ===== Actions ===== */
+function moveTask(id, status) {
+  const task = state.tasks.find(t => t.id === id);
+  if (!task || !STATUSES.includes(status) || task.status === status) return;
+  task.status = status;
+  renderBoard();
+}
+function deleteTask(id) {
+  state.tasks = state.tasks.filter(t => t.id !== id);
+  ui.confirmDeleteId = null;
+  renderBoard();
+}
+function nextId() { idCounter += 1; return "UOB-ITPM-" + String(idCounter).padStart(4, "0"); }
+function addTask(data) {
+  const task = Object.assign({ id: nextId() }, data);
+  state.tasks.push(task);
+  renderBoard();
+  return task;
+}
+
+/* ===== Toasts ===== */
+function showToast(message, kind) {
+  const el = document.createElement("div");
+  el.className = "toast " + (kind || "");
+  el.textContent = message;
+  document.getElementById("toasts").appendChild(el);
+  setTimeout(() => el.remove(), 4500);
+}
+
+/* ===== FormSubmit notification ===== */
+async function notifyNewTask(task) {
+  const res = await fetch(FORMSUBMIT_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      _subject: "[UOB IT PMO] New task " + task.id + ": " + task.title,
+      _template: "table",
+      _captcha: "false",
+      "Task ID": task.id,
+      Title: task.title,
+      Description: task.description,
+      Project: task.project,
+      Category: task.category,
+      Assignee: task.assignee,
+      Priority: task.priority,
+      "Due Date": task.dueDate,
+      Status: task.status,
+      "Submitted At": new Date().toISOString()
+    })
+  });
+  if (!res.ok) throw new Error("FormSubmit failed: " + res.status);
+  return res.json();
+}
+
+/* ===== Form validation & submit ===== */
+const form = document.getElementById("taskForm");
+const FIELDS = ["title", "description", "project", "category", "assignee", "priority", "dueDate", "status"];
+
+function setError(name, msg) {
+  document.getElementById("err-" + name).textContent = msg;
+  form.querySelector('[data-field="' + name + '"]').classList.toggle("invalid", !!msg);
+  document.getElementById(name).setAttribute("aria-invalid", msg ? "true" : "false");
+}
+function readForm() {
+  const v = {};
+  FIELDS.forEach(f => { v[f] = document.getElementById(f).value.trim(); });
+  return v;
+}
+function validate(v) {
+  const e = {};
+  if (!v.title) e.title = "Task title is required.";
+  else if (v.title.length > 80) e.title = "Title must be 80 characters or fewer.";
+  if (v.description.length > 500) e.description = "Description must be 500 characters or fewer.";
+  if (!PROJECTS.includes(v.project)) e.project = "Choose a project.";
+  if (!CATEGORIES.includes(v.category)) e.category = "Choose a category.";
+  if (!v.assignee) e.assignee = "Assignee is required.";
+  else if (v.assignee.length > 60) e.assignee = "Assignee must be 60 characters or fewer.";
+  if (!PRIORITIES.includes(v.priority)) e.priority = "Choose a priority.";
+  if (!v.dueDate) e.dueDate = "Due date is required.";
+  else if (!/^\d{4}-\d{2}-\d{2}$/.test(v.dueDate) || Number(v.dueDate.slice(0, 4)) > MAX_YEAR) e.dueDate = "Enter a valid date before " + (MAX_YEAR + 1) + ".";
+  else if (v.dueDate < todayIso()) e.dueDate = "Due date must not be in the past.";
+  if (!STATUSES.includes(v.status)) e.status = "Choose a status.";
+  return e;
+}
+async function handleSubmit(ev) {
+  ev.preventDefault();
+  const values = readForm();
+  const errors = validate(values);
+  FIELDS.forEach(f => setError(f, errors[f] || ""));
+  const firstBad = FIELDS.find(f => errors[f]);
+  if (firstBad) { document.getElementById(firstBad).focus(); return; }
+
+  const btn = document.getElementById("submitBtn");
+  btn.disabled = true;
+  btn.textContent = "Sending…";
+  const task = addTask(values);          // optimistic: card appears immediately
+  showToast("Task " + task.id + " added.", "success");
+  closeModal();
+  resetForm();
+  try {
+    await notifyNewTask(task);
+  } catch (err) {
+    showToast("Card added locally — email notification failed", "warn");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Add Task";
+  }
+}
+function resetForm() {
+  form.reset();
+  document.getElementById("priority").value = "Medium";
+  document.getElementById("status").value = "Backlog";
+  document.getElementById("dueDate").min = todayIso();
+  document.getElementById("dueDate").max = MAX_YEAR + "-12-31";
+  FIELDS.forEach(f => setError(f, ""));
+}
+
+/* ===== Modal ===== */
+const modal = document.getElementById("modal");
+function openModal() { modal.hidden = false; document.getElementById("title").focus(); }
+function closeModal() { modal.hidden = true; document.getElementById("openAdd").focus(); }
+
+/* ===== Wiring ===== */
+function init() {
+  document.getElementById("project").innerHTML = optionsHtml(PROJECTS, "Select…");
+  document.getElementById("category").innerHTML = optionsHtml(CATEGORIES, "Select…");
+  document.getElementById("priority").innerHTML = optionsHtml(PRIORITIES);
+  document.getElementById("status").innerHTML = optionsHtml(STATUSES);
+  document.getElementById("fProject").innerHTML = optionsHtml(PROJECTS, "All projects");
+  document.getElementById("fPriority").innerHTML = optionsHtml(PRIORITIES, "All priorities");
+  resetForm();
+
+  document.getElementById("openAdd").addEventListener("click", openModal);
+  document.getElementById("cancelAdd").addEventListener("click", closeModal);
+  modal.addEventListener("click", ev => { if (ev.target === modal) closeModal(); });
+  document.addEventListener("keydown", ev => { if (ev.key === "Escape" && !modal.hidden) closeModal(); });
+  form.addEventListener("submit", handleSubmit);
+
+  // Theme toggle (in-memory only; follows the OS setting until toggled)
+  document.getElementById("themeBtn").addEventListener("click", () => {
+    const root = document.documentElement;
+    const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    root.dataset.theme = dark ? "light" : "dark";
+  });
+
+  // Filters
+  const syncFilters = () => {
+    state.filters.project = document.getElementById("fProject").value;
+    state.filters.assignee = document.getElementById("fAssignee").value;
+    state.filters.priority = document.getElementById("fPriority").value;
+    renderBoard();
+  };
+  ["fProject", "fAssignee", "fPriority"].forEach(id => document.getElementById(id).addEventListener("input", syncFilters));
+  document.getElementById("clearFilters").addEventListener("click", () => {
+    ["fProject", "fAssignee", "fPriority"].forEach(id => { document.getElementById(id).value = ""; });
+    syncFilters();
+  });
+
+  // Board: delegated click / change / drag events
+  const board = document.getElementById("board");
+  board.addEventListener("click", ev => {
+    const el = ev.target.closest("[data-action]");
+    if (!el) return;
+    const id = el.dataset.id;
+    if (el.dataset.action === "delete") { ui.confirmDeleteId = id; renderBoard(); }
+    else if (el.dataset.action === "delete-no") { ui.confirmDeleteId = null; renderBoard(); }
+    else if (el.dataset.action === "delete-yes") { deleteTask(id); }
+  });
+  board.addEventListener("change", ev => {
+    const el = ev.target.closest('select[data-action="move"]');
+    if (el && el.value) moveTask(el.dataset.id, el.value);
+  });
+  board.addEventListener("dragstart", ev => {
+    const card = ev.target.closest ? ev.target.closest(".card") : null;
+    if (!card) return;
+    ui.draggingId = card.dataset.id;
+    ev.dataTransfer.effectAllowed = "move";
+    ev.dataTransfer.setData("text/plain", card.dataset.id);
+    card.classList.add("dragging");
+  });
+  board.addEventListener("dragend", () => {
+    ui.draggingId = null;
+    board.querySelectorAll(".dragging, .drop-target").forEach(n => n.classList.remove("dragging", "drop-target"));
+  });
+  board.addEventListener("dragover", ev => {
+    const col = ev.target.closest(".column");
+    if (!col || !ui.draggingId) return;
+    ev.preventDefault();
+    ev.dataTransfer.dropEffect = "move";
+    board.querySelectorAll(".drop-target").forEach(n => { if (n !== col) n.classList.remove("drop-target"); });
+    col.classList.add("drop-target");
+  });
+  board.addEventListener("dragleave", ev => {
+    const col = ev.target.closest(".column");
+    if (col && !col.contains(ev.relatedTarget)) col.classList.remove("drop-target");
+  });
+  board.addEventListener("drop", ev => {
+    const col = ev.target.closest(".column");
+    if (!col || !ui.draggingId) return;
+    ev.preventDefault();
+    moveTask(ui.draggingId, col.dataset.status);
+    ui.draggingId = null;
+  });
+
+  renderBoard();
+}
+init();
+</script>
+</body>
+</html>
