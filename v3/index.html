@@ -118,6 +118,17 @@ main { padding: var(--sp-5); display: grid; gap: var(--sp-5); max-width: 1500px;
 .upcoming .when { color: var(--ink-soft); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .upcoming .late { color: var(--crit); font-weight: 600; }
 .empty { color: var(--ink-soft); font-size: .88rem; }
+.summary-card { background: var(--surface); border-radius: var(--radius); padding: var(--sp-3); box-shadow: var(--shadow); }
+.sum-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-2); }
+.sum-stats div { background: var(--surface-2); border-radius: var(--radius); padding: var(--sp-2) var(--sp-3); }
+.sum-stats b { display: block; font-size: 1.4rem; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.sum-stats span { font-size: .75rem; color: var(--ink-soft); }
+.sum-stats .alert b { color: var(--crit); }
+.sum-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
+.sum-row { border-top: 1px solid var(--line); padding-top: var(--sp-2); display: grid; gap: var(--sp-1); cursor: grab; }
+.sum-main { font-size: .88rem; font-weight: 600; overflow-wrap: anywhere; }
+.sum-row .late { color: var(--crit); font-weight: 600; }
+.sum-row select { min-height: 44px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); padding: 0 var(--sp-2); justify-self: start; }
 
 /* ===== Board ===== */
 .board { display: flex; gap: var(--sp-4); align-items: flex-start; }
@@ -454,9 +465,36 @@ function renderBoard() {
     return '<section class="column" data-status="' + escapeHtml(status) + '" aria-label="' + escapeHtml(status) + ' column">' +
       '<div class="column-head"><h2><span class="swatch" style="background:' + STATUS_COLOR[status] + '"></span>' + escapeHtml(status) +
       '</h2><span class="badge" aria-label="' + cards.length + ' tasks">' + cards.length + "</span></div>" +
-      (cards.length ? cards.map(renderCard).join("") : '<p class="empty" style="text-align:center">No tasks</p>') + "</section>";
+      (status === "In Progress" ? renderProgressSummary(cards)
+        : cards.length ? cards.map(renderCard).join("") : '<p class="empty" style="text-align:center">No tasks</p>') + "</section>";
   }).join("");
   renderStats(state.tasks, visible);
+}
+
+/* In Progress column: summary instead of full cards */
+function renderProgressSummary(tasks) {
+  if (!tasks.length) return '<p class="empty" style="text-align:center">Nothing in progress</p>';
+  const overdue = tasks.filter(isOverdue).length;
+  const dueSoon = tasks.filter(t => { const d = daysUntil(t.dueDate); return d >= 0 && d <= 7; }).length;
+  const people = new Set(tasks.map(t => t.assignee)).size;
+  const chips = PRIORITIES.map(p => [p, tasks.filter(t => t.priority === p).length]).filter(c => c[1] > 0)
+    .map(c => '<span class="pill ' + c[0].toLowerCase() + '">' + escapeHtml(c[0]) + " " + c[1] + "</span>").join("");
+  const rows = tasks.slice().sort((a, b) => a.dueDate.localeCompare(b.dueDate)).map(t => {
+    const d = daysUntil(t.dueDate);
+    const when = d < 0 ? Math.abs(d) + "d overdue" : d === 0 ? "due today" : "in " + d + "d";
+    return '<li class="sum-row" draggable="true" data-id="' + escapeHtml(t.id) + '">' +
+      '<div class="sum-main"><span class="task-id">' + escapeHtml(t.id) + '</span> ' + escapeHtml(t.title) + "</div>" +
+      '<div class="meta">' + escapeHtml(t.assignee) + " · " + escapeHtml(t.priority) + " · <span class=\"" + (d < 0 ? "late" : "") + '">' + escapeHtml(when) + "</span></div>" +
+      '<select data-action="move" data-id="' + escapeHtml(t.id) + '" aria-label="Move ' + escapeHtml(t.id) + ' to another column"><option value="">Move ▸</option>' +
+      STATUSES.filter(s => s !== t.status).map(s => '<option value="' + escapeHtml(s) + '">' + escapeHtml(s) + "</option>").join("") + "</select></li>";
+  }).join("");
+  return '<div class="summary-card"><div class="sum-stats">' +
+    '<div><b>' + tasks.length + '</b><span>in progress</span></div>' +
+    '<div class="' + (overdue ? "alert" : "") + '"><b>' + overdue + '</b><span>overdue</span></div>' +
+    '<div><b>' + dueSoon + '</b><span>due in 7 days</span></div>' +
+    '<div><b>' + people + '</b><span>people</span></div></div>' +
+    '<div class="pills">' + chips + "</div>" +
+    '<ul class="sum-list">' + rows + "</ul></div>";
 }
 
 /* ===== Actions ===== */
@@ -632,7 +670,7 @@ function init() {
     if (el && el.value) moveTask(el.dataset.id, el.value);
   });
   board.addEventListener("dragstart", ev => {
-    const card = ev.target.closest ? ev.target.closest(".card") : null;
+    const card = ev.target.closest ? ev.target.closest(".card, .sum-row") : null;
     if (!card) return;
     ui.draggingId = card.dataset.id;
     ev.dataTransfer.effectAllowed = "move";
